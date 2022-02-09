@@ -10,6 +10,8 @@ import { generateRandom } from "expo-auth-session/build/PKCE";
 
 import { api } from "../services/api";
 
+const { CLIENT_ID } = process.env;
+
 interface User {
   id: number;
   display_name: string;
@@ -44,10 +46,6 @@ function AuthProvider({ children }: AuthProviderData) {
 
   // get CLIENT_ID from environment variables
 
-  useEffect(() => {
-    api.defaults.headers["Client-Id"] = process.env.CLIENT_ID;
-  }, []);
-
   async function signIn() {
     try {
       setIsLoggingIn(true);
@@ -60,7 +58,7 @@ function AuthProvider({ children }: AuthProviderData) {
 
       const authUrl =
         twitchEndpoints.authorization +
-        `?client_id=${process.env.CLIENT_ID}` +
+        `?client_id=${CLIENT_ID}` +
         `&redirect_uri=${REDIRECT_URI}` +
         `&response_type=${RESPONSE_TYPE}` +
         `&scope=${SCOPE}` +
@@ -103,18 +101,27 @@ function AuthProvider({ children }: AuthProviderData) {
   async function signOut() {
     try {
       // set isLoggingOut to true
+      setIsLoggingOut(true);
       // call revokeAsync with access_token, client_id and twitchEndpoint revocation
+      await revokeAsync(
+        { token: userToken, clientId: CLIENT_ID },
+        { revocationEndpoint: twitchEndpoints.revocation }
+      );
     } catch (error) {
     } finally {
       // set user state to an empty User object
+      setUser({} as User);
       // set userToken state to an empty string
+      setUserToken("");
       // remove "access_token" from request's authorization header
+      delete api.defaults.headers.authorization;
       // set isLoggingOut to false
+      setIsLoggingOut(false);
     }
   }
 
   useEffect(() => {
-    // add client_id to request's "Client-Id" header
+    api.defaults.headers["Client-Id"] = CLIENT_ID;
   }, []);
 
   return (
